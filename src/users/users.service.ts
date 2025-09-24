@@ -1,14 +1,14 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
-import { User } from '@prisma/client';
 
 import { PrismaService } from '@/prisma.service';
 import { CreateUserDto } from '@/users/dto/create-user.dto';
+import { UserResponseDto } from '@/users/dto/user-response.dto';
 
 @Injectable()
 export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(createUserDto: CreateUserDto): Promise<Omit<User, 'password'>> {
+  async create(createUserDto: CreateUserDto): Promise<UserResponseDto> {
     const existingUser = await this.prisma.user.findUnique({
       where: { email: createUserDto.email },
       select: {
@@ -36,7 +36,7 @@ export class UsersService {
     return user;
   }
 
-  async findAll(): Promise<Omit<User, 'password'>[]> {
+  async findAll(): Promise<UserResponseDto[]> {
     return this.prisma.user.findMany({
       select: {
         id: true,
@@ -48,7 +48,7 @@ export class UsersService {
     });
   }
 
-  async findOne(id: string): Promise<Omit<User, 'password'>> {
+  async findOne(id: string): Promise<UserResponseDto> {
     const user = await this.prisma.user.findUnique({
       where: { id },
       select: {
