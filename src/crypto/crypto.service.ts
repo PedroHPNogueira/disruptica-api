@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
-import { createCipheriv, createDecipheriv, scrypt } from 'crypto';
+import { createCipheriv, createDecipheriv, createHash, randomBytes, scrypt } from 'crypto';
 import { promisify } from 'util';
 
 @Injectable()
@@ -12,8 +12,8 @@ export class CryptoService {
   async encrypt(text: string): Promise<string> {
     if (!text || text.length === 0) return text;
 
-    //uses same IV for all encryptions
-    const iv = Buffer.from('00000000000000000000000000000000', 'hex');
+    // Generate random IV for security
+    const iv = randomBytes(16);
 
     // Derive key from secret using scrypt
     const key = (await promisify(scrypt)(this.secretKey, 'salt', 32)) as Buffer;
@@ -49,5 +49,11 @@ export class CryptoService {
 
   async createHash(text: string): Promise<string> {
     return bcrypt.hash(text, this.saltRounds);
+  }
+
+  hashForSearch(text: string): string {
+    return createHash('sha256')
+      .update(text + this.secretKey)
+      .digest('hex');
   }
 }

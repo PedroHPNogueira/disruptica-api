@@ -13,10 +13,10 @@ export class UsersService {
   ) {}
 
   async create(createUserDto: CreateUserDto): Promise<UserResponseDto> {
-    //Validate if user already exists
-    const encryptedEmail = await this.cryptoService.encrypt(createUserDto.email);
+    //Validate if user already exists using deterministic hash
+    const emailHash = this.cryptoService.hashForSearch(createUserDto.email);
     const existingUser = await this.prisma.user.findUnique({
-      where: { email: encryptedEmail },
+      where: { emailHash },
       select: {
         id: true,
       },
@@ -27,11 +27,13 @@ export class UsersService {
     const hashedPassword = await this.cryptoService.createHash(createUserDto.password);
 
     // Encrypt sensitive fields
+    const encryptedEmail = await this.cryptoService.encrypt(createUserDto.email);
     const encryptedName = await this.cryptoService.encrypt(createUserDto.name);
 
     const user = await this.prisma.user.create({
       data: {
         email: encryptedEmail,
+        emailHash,
         password: hashedPassword,
         name: encryptedName,
       },
