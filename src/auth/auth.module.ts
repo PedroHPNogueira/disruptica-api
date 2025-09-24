@@ -10,7 +10,7 @@ import { UsersService } from '@/users/users.service';
 @Module({
   imports: [
     JwtModule.register({
-      secret: process.env.JWT_SECRET || 'default-jwt-secret-change-in-production',
+      secret: process.env.JWT_SECRET || 'default-jwt-secret',
       signOptions: { expiresIn: '24h' },
     }),
   ],

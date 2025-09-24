@@ -6,7 +6,7 @@ import { promisify } from 'util';
 @Injectable()
 export class CryptoService {
   private readonly algorithm = 'aes-256-cbc';
-  private readonly secretKey = process.env.CRYPTO_SECRET || 'default-secret-key-change-in-production';
+  private readonly secretKey = process.env.CRYPTO_SECRET || 'default-secret-key';
   private readonly saltRounds = 10;
 
   async encrypt(text: string): Promise<string> {
