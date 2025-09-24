@@ -1,5 +1,4 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
-import * as bcrypt from 'bcrypt';
 
 import { CryptoService } from '@/crypto/crypto.service';
 import { PrismaService } from '@/prisma.service';
@@ -8,7 +7,6 @@ import { UserResponseDto } from '@/users/dto/user-response.dto';
 
 @Injectable()
 export class UsersService {
-  private readonly saltRounds = 10;
   constructor(
     private readonly prisma: PrismaService,
     private readonly cryptoService: CryptoService,
@@ -26,7 +24,7 @@ export class UsersService {
     if (existingUser) throw new HttpException('User already exists', HttpStatus.BAD_REQUEST);
 
     // Hash the password before saving
-    const hashedPassword = await bcrypt.hash(createUserDto.password, this.saltRounds);
+    const hashedPassword = await this.cryptoService.createHash(createUserDto.password);
 
     // Encrypt sensitive fields
     const encryptedName = await this.cryptoService.encrypt(createUserDto.name);
