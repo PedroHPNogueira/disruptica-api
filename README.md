@@ -14,9 +14,31 @@ Disruptica test project
 
 ### Prerequisites
 
-- Node.js 20+ and npm
+- Node.js 20+ and yarn or npm
 - Docker and Docker Compose
 - Git
+
+### Environment Setup
+
+Create a `.env` file in the root directory, for example:
+
+```env
+# Database Configuration
+DB_USER=postgres
+DB_PASSWORD=postgres
+DB_NAME=disruptica_db
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/disruptica_db?schema=public
+
+# JWT Configuration
+JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
+
+# Encryption Configuration
+CRYPTO_KEY=your-32-character-encryption-key-here
+
+# Application Configuration
+NODE_ENV=development
+PORT=3000
+```
 
 ### Local Development
 
