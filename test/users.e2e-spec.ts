@@ -9,6 +9,29 @@ describe('Users (e2e)', () => {
   let app: INestApplication;
   let prismaService: PrismaService;
 
+  // Helper function to create user and get auth token
+  const createUserAndGetToken = async (
+    userData = {
+      email: 'auth-user@example.com',
+      password: 'password123',
+      name: 'Auth User',
+    },
+  ): Promise<string> => {
+    // Create user
+    await request(app.getHttpServer()).post('/users').send(userData).expect(HttpStatus.CREATED);
+
+    // Login to get token
+    const loginResponse = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({
+        email: userData.email,
+        password: userData.password,
+      })
+      .expect(HttpStatus.OK);
+
+    return loginResponse.body.access_token as string;
+  };
+
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
@@ -129,9 +152,19 @@ describe('Users (e2e)', () => {
 
   describe('GET /users', () => {
     it('should return empty array when no users exist', async () => {
-      const response = await request(app.getHttpServer()).get('/users').expect(HttpStatus.OK);
+      // Create auth user and get token
+      const token = await createUserAndGetToken();
 
-      expect(response.body).toEqual([]);
+      const response = await request(app.getHttpServer())
+        .get('/users')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(HttpStatus.OK);
+
+      // Should return the auth user that was created
+      expect(response.body).toHaveLength(1);
+      expect(response.body[0]).toHaveProperty('id');
+      expect(response.body[0]).toHaveProperty('email');
+      expect(response.body[0].email).toBe('auth-user@example.com');
     });
 
     it('should return all users', async () => {
@@ -149,13 +182,18 @@ describe('Users (e2e)', () => {
       };
 
       await request(app.getHttpServer()).post('/users').send(user1).expect(HttpStatus.CREATED);
-
       await request(app.getHttpServer()).post('/users').send(user2).expect(HttpStatus.CREATED);
 
-      // Get all users
-      const response = await request(app.getHttpServer()).get('/users').expect(HttpStatus.OK);
+      // Create auth user and get token
+      const token = await createUserAndGetToken();
 
-      expect(response.body).toHaveLength(2);
+      // Get all users
+      const response = await request(app.getHttpServer())
+        .get('/users')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(HttpStatus.OK);
+
+      expect(response.body).toHaveLength(3); // user1, user2, and auth user
       expect(response.body[0]).toHaveProperty('id');
       expect(response.body[0]).toHaveProperty('email');
       expect(response.body[0]).toHaveProperty('name');
@@ -183,8 +221,14 @@ describe('Users (e2e)', () => {
 
       const userId = createResponse.body.id;
 
+      // Create auth user and get token
+      const token = await createUserAndGetToken();
+
       // Get user by id
-      const response = await request(app.getHttpServer()).get(`/users/${userId}`).expect(HttpStatus.OK);
+      const response = await request(app.getHttpServer())
+        .get(`/users/${userId}`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(HttpStatus.OK);
 
       expect(response.body.id).toBe(userId);
       expect(response.body.email).toBe(createUserDto.email);
@@ -197,7 +241,13 @@ describe('Users (e2e)', () => {
     it('should return 404 when user not found', async () => {
       const nonExistentId = '123e4567-e89b-12d3-a456-426614174000';
 
-      const response = await request(app.getHttpServer()).get(`/users/${nonExistentId}`).expect(HttpStatus.NOT_FOUND);
+      // Create auth user and get token
+      const token = await createUserAndGetToken();
+
+      const response = await request(app.getHttpServer())
+        .get(`/users/${nonExistentId}`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(HttpStatus.NOT_FOUND);
 
       expect(response.body.message).toBe('User not found');
     });
@@ -205,7 +255,13 @@ describe('Users (e2e)', () => {
     it('should return 404 when id format is invalid', async () => {
       const invalidId = 'invalid-uuid';
 
-      await request(app.getHttpServer()).get(`/users/${invalidId}`).expect(HttpStatus.NOT_FOUND);
+      // Create auth user and get token
+      const token = await createUserAndGetToken();
+
+      await request(app.getHttpServer())
+        .get(`/users/${invalidId}`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(HttpStatus.NOT_FOUND);
     });
   });
 
@@ -225,14 +281,24 @@ describe('Users (e2e)', () => {
 
       const userId = createResponse.body.id;
 
-      // 2. Verify user appears in list
-      const listResponse = await request(app.getHttpServer()).get('/users').expect(HttpStatus.OK);
+      // 2. Create auth user and get token
+      const token = await createUserAndGetToken();
 
-      expect(listResponse.body).toHaveLength(1);
-      expect(listResponse.body[0].id).toBe(userId);
+      // 3. Verify user appears in list
+      const listResponse = await request(app.getHttpServer())
+        .get('/users')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(HttpStatus.OK);
 
-      // 3. Get user by id
-      const getResponse = await request(app.getHttpServer()).get(`/users/${userId}`).expect(HttpStatus.OK);
+      expect(listResponse.body).toHaveLength(2); // lifecycle user + auth user
+      const lifecycleUser = (listResponse.body as any[]).find((u) => u.id === userId);
+      expect(lifecycleUser).toBeDefined();
+
+      // 4. Get user by id
+      const getResponse = await request(app.getHttpServer())
+        .get(`/users/${userId}`)
+        .set('Authorization', `Bearer ${token}`)
+        .expect(HttpStatus.OK);
 
       expect(getResponse.body.id).toBe(userId);
       expect(getResponse.body.email).toBe(createUserDto.email);
@@ -252,14 +318,23 @@ describe('Users (e2e)', () => {
         createdUsers.push(response.body);
       }
 
-      // Verify all users exist
-      const listResponse = await request(app.getHttpServer()).get('/users').expect(HttpStatus.OK);
+      // Create auth user and get token
+      const token = await createUserAndGetToken();
 
-      expect(listResponse.body).toHaveLength(3);
+      // Verify all users exist
+      const listResponse = await request(app.getHttpServer())
+        .get('/users')
+        .set('Authorization', `Bearer ${token}`)
+        .expect(HttpStatus.OK);
+
+      expect(listResponse.body).toHaveLength(4); // 3 created users + auth user
 
       // Verify each user can be retrieved individually
       for (const user of createdUsers) {
-        await request(app.getHttpServer()).get(`/users/${user.id}`).expect(HttpStatus.OK);
+        await request(app.getHttpServer())
+          .get(`/users/${user.id}`)
+          .set('Authorization', `Bearer ${token}`)
+          .expect(HttpStatus.OK);
       }
     });
   });
