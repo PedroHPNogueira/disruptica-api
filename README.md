@@ -54,11 +54,11 @@ yarn
 docker-compose up -d
 
 # Generate Prisma client and run migrations
-npx prisma generate
-npx prisma db push
+yarn db:generate
+yarn db:push
 
 # Start the application in development mode
-npm run start:dev
+yarn start:dev
 ```
 
 The API will be available at `http://localhost:3000`
