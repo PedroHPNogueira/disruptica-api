@@ -1,5 +1,5 @@
 import { Body, Controller, Get, HttpStatus, Param, Post, UseGuards } from '@nestjs/common';
-import { ApiBody, ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiBody, ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
 
 import { AuthGuard } from '@/auth/auth.guard';
 import { CreateUserDto } from '@/users/dto/create-user.dto';
@@ -28,6 +28,7 @@ export class UsersController {
   }
 
   @UseGuards(AuthGuard)
+  @ApiBearerAuth('JWT-auth')
   @Get()
   @ApiOperation({ summary: 'Get all users' })
   @ApiResponse({
@@ -39,6 +40,8 @@ export class UsersController {
     return this.usersService.findAll();
   }
 
+  @UseGuards(AuthGuard)
+  @ApiBearerAuth('JWT-auth')
   @Get(':id')
   @ApiOperation({ summary: 'Get user by ID' })
   @ApiParam({
