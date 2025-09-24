@@ -45,4 +45,13 @@ export default tseslint.config(
       'import/no-duplicates': 'warn',
     },
   },
+  {
+    files: ['**/*.spec.ts', '**/*.test.ts', '**/*.e2e-spec.ts'],
+    rules: {
+      '@typescript-eslint/unbound-method': 'off',
+      '@typescript-eslint/no-unsafe-member-access': 'off',
+      '@typescript-eslint/no-unsafe-argument': 'off',
+      '@typescript-eslint/no-unsafe-assignment': 'off',
+    },
+  },
 );

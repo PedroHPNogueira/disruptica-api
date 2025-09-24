@@ -1,0 +1,110 @@
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+
+import { CryptoService } from '@/crypto/crypto.service';
+import { PrismaService } from '@/prisma.service';
+import { CreateUserDto } from '@/users/dto/create-user.dto';
+import { UserResponseDto } from '@/users/dto/user-response.dto';
+
+@Injectable()
+export class UsersService {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly cryptoService: CryptoService,
+  ) {}
+
+  async create(createUserDto: CreateUserDto): Promise<UserResponseDto> {
+    //Validate if user already exists using deterministic hash
+    const emailHash = this.cryptoService.hashForSearch(createUserDto.email);
+    const existingUser = await this.prisma.user.findUnique({
+      where: { emailHash },
+      select: {
+        id: true,
+      },
+    });
+    if (existingUser) throw new HttpException('User already exists', HttpStatus.BAD_REQUEST);
+
+    // Hash the password before saving
+    const hashedPassword = await this.cryptoService.createHash(createUserDto.password);
+
+    // Encrypt sensitive fields
+    const encryptedEmail = await this.cryptoService.encrypt(createUserDto.email);
+    const encryptedName = await this.cryptoService.encrypt(createUserDto.name);
+
+    const user = await this.prisma.user.create({
+      data: {
+        email: encryptedEmail,
+        emailHash,
+        password: hashedPassword,
+        name: encryptedName,
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    // Decrypt fields for response
+    const decryptedEmail = await this.cryptoService.decrypt(user.email);
+    const decryptedName = await this.cryptoService.decrypt(user.name);
+
+    return {
+      ...user,
+      email: decryptedEmail,
+      name: decryptedName,
+    };
+  }
+
+  async findAll(): Promise<UserResponseDto[]> {
+    const users = await this.prisma.user.findMany({
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    // Decrypt sensitive fields for all users
+    return Promise.all(
+      users.map(async (user) => {
+        const decryptedEmail = await this.cryptoService.decrypt(user.email);
+        const decryptedName = await this.cryptoService.decrypt(user.name);
+
+        return {
+          ...user,
+          email: decryptedEmail,
+          name: decryptedName,
+        };
+      }),
+    );
+  }
+
+  async findOne(id: string): Promise<UserResponseDto> {
+    const user = await this.prisma.user.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    if (!user) throw new HttpException('User not found', HttpStatus.NOT_FOUND);
+
+    // Decrypt sensitive fields for response
+    const decryptedEmail = await this.cryptoService.decrypt(user.email);
+    const decryptedName = await this.cryptoService.decrypt(user.name);
+
+    return {
+      ...user,
+      email: decryptedEmail,
+      name: decryptedName,
+    };
+  }
+}
