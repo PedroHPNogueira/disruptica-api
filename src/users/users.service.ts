@@ -9,7 +9,7 @@ export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(createUserDto: CreateUserDto): Promise<Omit<User, 'password'>> {
-    const existingUser = await this.prisma.findUnique({
+    const existingUser = await this.prisma.user.findUnique({
       where: { email: createUserDto.email },
       select: {
         id: true,
@@ -18,7 +18,7 @@ export class UsersService {
 
     if (existingUser) throw new HttpException('User already exists', HttpStatus.BAD_REQUEST);
 
-    const user = (await this.prisma.user.create({
+    const user = await this.prisma.user.create({
       data: {
         email: createUserDto.email,
         password: createUserDto.password,
@@ -31,7 +31,7 @@ export class UsersService {
         createdAt: true,
         updatedAt: true,
       },
-    })) as Omit<User, 'password'>;
+    });
 
     return user;
   }
